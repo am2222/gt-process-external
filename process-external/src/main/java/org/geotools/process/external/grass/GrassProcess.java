@@ -10,8 +10,13 @@ import java.util.Map;
 import java.util.Set;
 
 import org.geotools.coverage.grid.GridCoverage2D;
+import org.geotools.coverage.grid.io.AbstractGridFormat;
+import org.geotools.data.DataSourceException;
 import org.geotools.data.Parameter;
+import org.geotools.factory.Hints;
 import org.geotools.feature.FeatureCollection;
+import org.geotools.gce.geotiff.GeoTiffFormat;
+import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.Process;
 import org.geotools.process.ProcessException;
@@ -102,7 +107,7 @@ public class GrassProcess implements Process {
 					+ e.getMessage());
 		}
 
-		// 1: Export layer to grass mapset. It will export also
+		// 1: Export layers to grass mapset.
 
 		Set<String> set = inputs.keySet();
 		Iterator<String> iter = set.iterator();
@@ -311,7 +316,23 @@ public class GrassProcess implements Process {
 			Parameter param = outputs.get(key);
 			String filename = outputFilenames.get(key);
 			if (param.getType().equals(GridCoverage2D.class)) {
-				// TODO:********
+				final AbstractGridFormat format = new GeoTiffFormat();
+				GeoTiffReader reader;
+				try {
+					reader = new GeoTiffReader(new File(filename), new Hints(
+							Hints.FORCE_LONGITUDE_FIRST_AXIS_ORDER,
+							Boolean.TRUE));
+				if (reader != null) {
+					GridCoverage2D gc = (GridCoverage2D) reader.read(null);
+					results.put(key, gc);
+				}
+				} catch (DataSourceException e) {
+					throw new ProcessException("Error reading result layers:\n"
+							+ e.getMessage());
+				} catch (IOException e) {
+					throw new ProcessException("Error reading result layers:\n"
+							+ e.getMessage());
+				}
 			} else if (param.getType().equals(FeatureCollection.class)) {
 
 			} else {

@@ -66,6 +66,8 @@ public class Parameters {
 					new SimpleInternationalString(tokens[1]),
 					new SimpleInternationalString(tokens[2]), min > 0, min, 1,
 					null, null);
+		} else if (tokens[0].equals("ParameterFixedTable")) {
+			// TODO:*****
 		} else if (tokens[0].equals("ParameterTableField")) {
 			param = new Parameter(tokens[1], String.class,
 					new SimpleInternationalString(tokens[1]),
@@ -78,7 +80,7 @@ public class Parameters {
 				list.add(options[i]);
 			}
 			map.put(Parameter.OPTIONS, list);
-			param = new Parameter(tokens[1], Number.class,
+			param = new Parameter(tokens[1], String.class,
 					new SimpleInternationalString(tokens[1]),
 					new SimpleInternationalString(tokens[2]), true, 1, 1,
 					options[0], map);
@@ -96,10 +98,24 @@ public class Parameters {
 					new SimpleInternationalString(tokens[1]),
 					new SimpleInternationalString(tokens[2]));
 		} else if (tokens[0].equals("ParameterMultipleInput")) {
-			// TODO: *********
-			param = new Parameter(tokens[1], String.class,
-					new SimpleInternationalString(tokens[1]),
-					new SimpleInternationalString(tokens[2]));
+			int min = 1;
+			if (Boolean.valueOf(tokens[4]).booleanValue()) {
+				min = 0;
+			}
+			HashMap map = new HashMap();
+			if (Double.parseDouble(tokens[3]) == 3.) { // raster
+				map.put(Parameter.ELEMENT, GridCoverage2D.class);
+				param = new Parameter(tokens[1], GridCoverage2D[].class,
+						new SimpleInternationalString(tokens[1]),
+						new SimpleInternationalString(tokens[2]), min > 0, min,
+						1, null, map);
+			} else {
+				map.put(Parameter.ELEMENT, FeatureCollection.class);
+				param = new Parameter(tokens[1], FeatureCollection[].class,
+						new SimpleInternationalString(tokens[1]),
+						new SimpleInternationalString(tokens[2]), min > 0, min,
+						1, null, map);
+			}
 		} else {
 			param = new Parameter(tokens[1], String.class,
 					new SimpleInternationalString(tokens[1]),
