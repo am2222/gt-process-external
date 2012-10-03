@@ -36,18 +36,55 @@ The execute module, just like with any other GeoTools geoprocess, takes a ``Map<
 
 In the above case of the ``r.fillnulls`` module, the following is the parameter description from the GRASS documentation:
 
-XXXXXX
+::
+
+	Flags:
+
+		--overwrite
+			Allow output files to overwrite existing files
+		--verbose
+			Verbose module output
+		--quiet
+			Quiet module output
+	
+	Parameters:
+
+		input=string
+			Name of input raster map in which to fill nulls
+		output=string
+			Name for output raster map with nulls filled by interpolation
+		tension=float
+			Spline tension parameter
+			Default: 40.
+		smooth=float
+			Spline smoothing parameter
+			Default: 0.1
+		method=string
+			Interpolation method
+			Options: bilinear,bicubic,rst
+			Default: rst
 
 Below you can find a valid code example to call that process from GeoTools, by running the ``execute`` method of the process instance that we obtained in the previous block of code.
 
 ::
+	GridCoverage2D gc;
+	//load coverage into gc variable here
+	.
+	.
+	.
+	HashMap<String, Object> map = new HashMap<String, Object>();
+	map.put("input", gc);
+	map.put("smooth", 0.1);
+	map.put("tension", 40.0);
+	Map<String, Object> result = proc.execute(map, null);
 
-	XXXXX
 
 
 Raster layers are passed as ``GridCoverage2D`` objects, while vector layers are passed as ``FeatureCollection`` ones.
 
 For the remaining types of input, the mapping from string literals used in the GRASS console to Java objects is rather straightforward. In the case of a parameter that accepts values from a list (like a method to use, to be selected from a set of available ones), check the GRASS module documentation and pass the selected option as a ``String`` object, with the same value that would be used for a command-line call.
+
+Flags are also considered as parameters, and are set using a ``Boolean`` value. The double hyphen preceding the flag name should not be added to the name of the parameter.
 
 Along with the parameters that correspond to the GRASS module itself, there are always three additional ones that are used to configure properties that in a normal GRASS session would the configured otherwise, but that in this case, and since we are executing GRASS from *outside* of it, are configured as just extra parameters. These additional parameters are the following ones:
 
@@ -63,8 +100,9 @@ There is no default value for the region extent, but if the process takes some l
 
 In case there are input raster layers and a region cellsize is not provided, it will also be inferred from those layers. The minimum cellsize of all input raster layers will be used.
 
-Most parameters except layers are optional, like string values or numerical ones, since there is a default value to use. In the case of a parameter to select from a list of possible ones, the first option is used in case a valu for that parameter is not provided.
+Most parameters except layers are optional, like string values or numerical ones, since there is a default value to use. In the case of a parameter to select from a list of possible ones, the first option is used in case a value for that parameter is not provided.
 
+Parameters reprenting outputs do not have to be set. Outputs stored in temporary files, and the GeoTools-GRASS interface will take care of deleting them when necessary. As it is explained next, for a single output file, several intermediate files will be generated as well, but you do not have to worry about that.
 
 Internal mechanism of the GeoTools-GRASS interface
 ---------------------------------------------------------
@@ -158,7 +196,7 @@ To get the corresponding processes from the SAGA factory class, you would use th
 	curvatureclassification
 	hypsometry
 
-for instance, to get the process that computes the convergence index, the following code should be used:
+For instance, to get the process that computes the convergence index, the following code should be used:
 
 ::
 	
@@ -212,6 +250,8 @@ As in the case of GRASS processes, most parameters can be ommited, as there are 
 	HashMap<String, Object> map = new HashMap<String, Object>();
 	map.put("elevation", gc);
 	Map<String, Object> result = proc.execute(map, null);
+
+Once again, as it happened with GRASS algorithms, outputs do not need to be defined.
 
 Optimizing process workflows
 -----------------------------
