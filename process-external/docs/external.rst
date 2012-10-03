@@ -67,6 +67,7 @@ In the above case of the ``r.fillnulls`` module, the following is the parameter 
 Below you can find a valid code example to call that process from GeoTools, by running the ``execute`` method of the process instance that we obtained in the previous block of code.
 
 ::
+
 	GridCoverage2D gc;
 	//load coverage into gc variable here
 	.
