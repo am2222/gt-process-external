@@ -223,6 +223,7 @@ public class GrassUtils {
 			throw new ProcessException("Error Executing GRASS:\n"
 					+ e.getMessage());
 		}
+
 	}
 
 	private static String grassBatchJobFilename() {
@@ -333,15 +334,11 @@ public class GrassUtils {
 				fout.close();
 			}
 		} catch (Exception e) {
-			throw new ProcessException(e.getMessage());
-			// TODO****
+			throw new ProcessException("Error creating GRASS batch job file:\n"
+					+ e.getMessage());
 		}
 	}
 
-	public static void deleteMapset(String mapset) {
-		// TODO Auto-generated method stub
-
-	}
 
 }
 

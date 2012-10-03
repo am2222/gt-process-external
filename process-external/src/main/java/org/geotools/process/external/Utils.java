@@ -29,6 +29,7 @@ public class Utils {
 		return true;
 	}
 
+	// Export a grid coverage to a temporary file in TIF format
 	public static String exportRasterLayer(GridCoverage2D gc) {
 		try {
 			String filename = getTempOutputFilename("raster", "tif");
@@ -44,8 +45,8 @@ public class Utils {
 
 	}
 
+	// Exports a FeatureCollection to a temporary shapefile
 	public static String exportVectorLayer(FeatureCollection fc) {
-		// TODO Auto-generated method stub
 		try {
 			String filename = getTempOutputFilename("vector", "shp");
 
@@ -126,6 +127,19 @@ public class Utils {
 		throw new IllegalStateException("Failed to create directory within "
 				+ TEMP_DIR_ATTEMPTS + " attempts (tried " + baseName + "0 to "
 				+ baseName + (TEMP_DIR_ATTEMPTS - 1) + ')');
+	}
+
+	public static boolean deleteDir(File dir) {
+		if (dir.isDirectory()) {
+			String[] children = dir.list();
+			for (int i = 0; i < children.length; i++) {
+				boolean success = deleteDir(new File(dir, children[i]));
+				if (!success) {
+					return false;
+				}
+			}
+		}
+		return dir.delete();
 	}
 
 }

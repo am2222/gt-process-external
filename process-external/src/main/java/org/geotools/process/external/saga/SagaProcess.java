@@ -236,11 +236,16 @@ public class SagaProcess implements Process {
                 catch(IOException e){
                 	throw new ProcessException("Error creating SAGA table file:\n"+e.getMessage());
                 }
-			}else if (param.getType().equals(ReferencedEnvelope.class)) {				
-//	                values = param.aslist()
-//	                for i in range(4):
-//	                    command += ' -' + self.extentParamNames[i] + ' ' \
-//	                        + str(values[i])
+			} else if (param.getType().equals(ReferencedEnvelope.class)) {
+				ReferencedEnvelope envelope = (ReferencedEnvelope) value;
+				command += " -" + extentParamNames[0] + " "
+						+ envelope.getMinX();
+				command += " -" + extentParamNames[1] + " "
+						+ envelope.getMaxX();
+				command += " -" + extentParamNames[2] + " "
+						+ envelope.getMinY();
+				command += " -" + extentParamNames[3] + " "
+						+ envelope.getMaxY();
 			} else if (param.getType().equals(Boolean.class)) {
 				if (new Boolean(value.toString()).booleanValue()) {
 					command += " -" + param.getName();

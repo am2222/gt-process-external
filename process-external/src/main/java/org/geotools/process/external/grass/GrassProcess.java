@@ -340,7 +340,7 @@ public class GrassProcess implements Process {
 			}
 		}
 
-		GrassUtils.deleteMapset(gisdbase);
+		Utils.deleteDir(new File(gisdbase));
 
 		return results;
 

@@ -67,7 +67,12 @@ public class Parameters {
 					new SimpleInternationalString(tokens[2]), min > 0, min, 1,
 					null, null);
 		} else if (tokens[0].equals("ParameterFixedTable")) {
-			// TODO:*****
+			HashMap map = new HashMap();
+			map.put(Parameter.ELEMENT, Double.class);
+			param = new Parameter(tokens[1], Double[][].class,
+					new SimpleInternationalString(tokens[1]),
+					new SimpleInternationalString(tokens[2]), true, 1, 1, null,
+					map);
 		} else if (tokens[0].equals("ParameterTableField")) {
 			param = new Parameter(tokens[1], String.class,
 					new SimpleInternationalString(tokens[1]),
