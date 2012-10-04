@@ -20,7 +20,7 @@ public class SagaUtils {
 	public static String getBatchJobFilename() {
 		if (sagaBatchJobFilename == null) {
 			String ext = "sh";
-			if (!Utils.isWindows()) {
+			if (Utils.isWindows()) {
 				ext = "bat";
 			}
 			sagaBatchJobFilename = Utils.getTempFilename("saga_batchjob",

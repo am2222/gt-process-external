@@ -18,11 +18,23 @@ public class Parameters {
 
 		String[] tokens = line.split("\\|");
 		if (tokens[0].equals("ParameterBoolean")) {
-			param = new Parameter(tokens[1].replace("-", ""), Number.class,
+			param = new Parameter(tokens[1].replace("-", ""), Boolean.class,
 					new SimpleInternationalString(tokens[1]),
 					new SimpleInternationalString(tokens[2]), false, 0, 1,
 					Boolean.valueOf(tokens[3]), null);
 		} else if (tokens[0].equals("ParameterNumber")) {
+			// Number type is inferred from the default value. If it looks like
+			// a double
+			// and cannot be parsed to an int, it is a double.
+			Number defaultValue = null;
+			Class clazz = null;
+			try {
+				defaultValue = Integer.valueOf(tokens[5]);
+				clazz = Integer.class;
+			} catch (NumberFormatException e) {
+				defaultValue = Double.valueOf(tokens[5]);
+				clazz = Double.class;
+			}
 			HashMap map = new HashMap();
 			try {
 				double min = Double.valueOf(tokens[3]);
@@ -34,10 +46,10 @@ public class Parameters {
 				map.put(Parameter.MAX, max);
 			} catch (Exception e) {
 			}
-			param = new Parameter(tokens[1], Number.class,
+			param = new Parameter(tokens[1], clazz,
 					new SimpleInternationalString(tokens[1]),
 					new SimpleInternationalString(tokens[2]), false, 0, 1,
-					Double.valueOf(tokens[5]), map);
+					defaultValue, map);
 
 		} else if (tokens[0].equals("ParameterRaster")) {
 			int min = 1;

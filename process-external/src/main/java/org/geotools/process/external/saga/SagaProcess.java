@@ -2,10 +2,11 @@ package org.geotools.process.external.saga;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -18,34 +19,29 @@ import org.geotools.factory.Hints;
 import org.geotools.feature.FeatureCollection;
 import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.process.Process;
 import org.geotools.process.ProcessException;
+import org.geotools.process.external.ExternalProcess;
 import org.geotools.process.external.Parameters;
 import org.geotools.process.external.Utils;
 import org.geotools.util.SimpleInternationalString;
 import org.opengis.util.ProgressListener;
 
-public class SagaProcess implements Process {
+public class SagaProcess extends ExternalProcess {
 
 	public static final String SAGA_OUTPUT_EXTENT = "extent";
 
-	private String name;
 	private String fullname;
 	private String modulelib;
-	private HashMap<String, Parameter<?>> inputs;
-	private HashMap<String, Parameter<?>> outputs;
-	private HashMap<Object, String> exportedLayers;
 	private String[] extentParamNames;
 	private HashMap<String, String[]> fixedTableCols;
-	private static int nExportedLayers = 0;
+
 
 	public SagaProcess(String desc) {
-
 		inputs = new HashMap<String, Parameter<?>>();
 		outputs = new HashMap<String, Parameter<?>>();
 		fixedTableCols = new HashMap<String, String[]>();
 		String[] lines = desc.split("\n");
-		fullname = lines[0].trim();
+		description = fullname = lines[0].trim();
 		name = fullname.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
 		modulelib = lines[1].trim();
 		for (int i = 2; i < lines.length; i++) {
@@ -61,7 +57,7 @@ public class SagaProcess implements Process {
 				map.put(Parameter.OPTIONS, list);
 				Parameter param = new Parameter(tokens[1], Integer.class,
 						new SimpleInternationalString(tokens[1]),
-						new SimpleInternationalString(tokens[2]), true, 1, 1,
+						new SimpleInternationalString(tokens[2]), true, 0, 1,
 						new Integer(0), map);
 				inputs.put(param.key.toLowerCase(), param);
 			} else if (line.startsWith("ParameterFixedTable")){//also this,since column names have to be stored
@@ -97,8 +93,7 @@ public class SagaProcess implements Process {
 
 	}
 
-	@Override
-	public Map<String, Object> execute(Map<String, Object> params_org,
+	public Map<String, Object> _execute(Map<String, Object> params_org,
 			ProgressListener progress) throws ProcessException {
 
 		Map<String, Object> params = new HashMap<String, Object>();
@@ -267,12 +262,12 @@ public class SagaProcess implements Process {
 			Parameter param = outputs.get(key);			
 				String filename = null;
 				if (param.getType().equals(GridCoverage2D.class)) {
-					filename = Utils.getTempOutputFilename(key, "tif");
+				filename = getTempLayerFilename(key, "tif");
 				command += " -" + param.getName() + " \"" + filename
 						+ ".sgrd\"";
 				} else {
 						// {
-					filename = Utils.getTempOutputFilename(key, "shp");
+				filename = getTempLayerFilename(key, "shp");
 				command += " -" + param.getName() + " \"" + filename + "\"";
 				}
 				outputFilenames.put(key, filename);							
@@ -342,13 +337,13 @@ public class SagaProcess implements Process {
 	}
 
 	private void exportVectorLayer(FeatureCollection fc) {
-		String intermediateFilename = Utils.exportVectorLayer(fc);
+		String intermediateFilename = saveVectorLayer(fc);
 		exportedLayers.put(fc, intermediateFilename);
 	}
 
 	private String exportRasterLayer(GridCoverage2D gc) {
-		String intermediateFilename = Utils.exportRasterLayer(gc);
-		String destFilename = Utils.getTempFilename("raster", "sgrd");
+		String intermediateFilename = saveRasterLayer(gc);
+		String destFilename = getTempLayerFilename("raster", "sgrd");
 		exportedLayers.put(gc, destFilename);
 		if (Utils.isWindows()) {
 			return "io_gdal 0 -GRIDS \"" + destFilename + "\" -FILES \""
@@ -359,28 +354,28 @@ public class SagaProcess implements Process {
 		}
 	}
 
-	private String getTempFilename() {
-		long milisecs = new Date().getTime();
-		String filename = "tmp" + Long.toString(milisecs)
-				+ Integer.toString(nExportedLayers);
-		nExportedLayers += 1;
-		return filename;
-	}
 
-	public String getDescription() {
-		return name;
-	}
+	@Override
+	public void deleteExportedLayers() {
+		// TODO delete also output intermediate files and handle them smartly
+		if (isAppSpecificCleared) {
+			return;
+		}
+		Collection<String> layers = exportedLayers.values();
+		for (final String layer : layers) {
+			File[] filesToDelete = new File(tempLayersFolder)
+					.listFiles(new FileFilter() {
+						public boolean accept(File f) {
+							String filename = f.getName();
+							return filename.contains(layer);
+						}
+					});
+			for (File file : filesToDelete) {
+				file.delete();
+			}
+		}
+		isAppSpecificCleared = true;
 
-	public Map<String, Parameter<?>> getParameterInfo() {
-		return inputs;
-	}
-
-	public Map<String, Parameter<?>> getResultInfo() {
-		return outputs;
-	}
-
-	public String getName() {
-		return name;
 	}
 
 }

@@ -1,5 +1,7 @@
 package org.geotools.process.external.saga;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,14 +12,15 @@ import org.geotools.feature.NameImpl;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.Process;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
+import org.junit.Test;
 
 public class SagaTest {
 
 	private static final GridCoverageFactory covFactory = CoverageFactoryFinder
 			.getGridCoverageFactory(null);
 
-	public static void main(String[] args) {
-
+	@Test
+	public void testConvergenceIndex() {
 		SagaProcessFactory fact = new SagaProcessFactory();
 		NameImpl name = new NameImpl("saga", "convergenceindex");
 		Process proc = fact.create(name);
@@ -27,7 +30,7 @@ public class SagaTest {
 		map.put("method", new Integer(0));
 		map.put("neighbours", new Integer(0));
 		Map<String, Object> result = proc.execute(map, null);
-
+		assertTrue(result.size() > 0);
 	}
 
 	private static GridCoverage2D createFlat() {

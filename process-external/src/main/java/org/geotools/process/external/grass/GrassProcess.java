@@ -10,34 +10,28 @@ import java.util.Map;
 import java.util.Set;
 
 import org.geotools.coverage.grid.GridCoverage2D;
-import org.geotools.coverage.grid.io.AbstractGridFormat;
 import org.geotools.data.DataSourceException;
 import org.geotools.data.Parameter;
 import org.geotools.factory.Hints;
 import org.geotools.feature.FeatureCollection;
-import org.geotools.gce.geotiff.GeoTiffFormat;
 import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.process.Process;
 import org.geotools.process.ProcessException;
+import org.geotools.process.external.ExternalProcess;
 import org.geotools.process.external.Parameters;
 import org.geotools.process.external.Utils;
 import org.geotools.util.SimpleInternationalString;
 import org.opengis.util.ProgressListener;
 
-public class GrassProcess implements Process {
+public class GrassProcess extends ExternalProcess {
 
 	public static final String GRASS_REGION_EXTENT_PARAMETER = "regionextent";
 	public static final String GRASS_REGION_CELLSIZE_PARAMETER = "regioncellsize";
 	public static final Object GRASS_LATLON = "latlon";
 
 	private String grassCommand;
-	private String name;
-	private String description;
-	private HashMap<String, Parameter<?>> inputs;
-	private HashMap<String, Parameter<?>> outputs;
 	private HashMap<Object, String> exportedLayers;
-	private static int nExportedLayers = 0;
+	private String gisdbase;
 
 	public GrassProcess(String desc) {
 
@@ -76,8 +70,7 @@ public class GrassProcess implements Process {
 
 	}
 
-	@Override
-	public Map<String, Object> execute(Map<String, Object> params,
+	public Map<String, Object> _execute(Map<String, Object> params,
 			ProgressListener progress) throws ProcessException {
 
 		HashMap<String, String> outputFilenames = new HashMap<String, String>();
@@ -99,7 +92,6 @@ public class GrassProcess implements Process {
 					.booleanValue();
 		}
 
-		String gisdbase;
 		try {
 			gisdbase = GrassUtils.createMapset(latlon);
 		} catch (IOException e) {
@@ -255,16 +247,15 @@ public class GrassProcess implements Process {
 			String key = iter.next();
 			Parameter param = outputs.get(key);
 			if (param.getType().equals(String.class)) {
-				String filename = Utils.getTempOutputFilename(key, "txt");
+				String filename = getTempLayerFilename(key, "txt");
 				outputFilenames.put(key, filename);
 				command += ' ' + param.getName() + "=" + filename + "\"";
 			} else {
 				String filename = null;
 				if (param.getType().equals(GridCoverage2D.class)) {
-					filename = Utils.getTempOutputFilename(key, "tif");
-				} else {// if (param.getType().equals(FeatureCollection.class))
-						// {
-					filename = Utils.getTempOutputFilename(key, "shp");
+					filename = getTempLayerFilename(key, "tif");
+				} else {
+					filename = getTempLayerFilename(key, "shp");
 				}
 				outputFilenames.put(key, filename);
 				command += ' ' + param.getName() + '=' + param.getName();
@@ -316,7 +307,6 @@ public class GrassProcess implements Process {
 			Parameter param = outputs.get(key);
 			String filename = outputFilenames.get(key);
 			if (param.getType().equals(GridCoverage2D.class)) {
-				final AbstractGridFormat format = new GeoTiffFormat();
 				GeoTiffReader reader;
 				try {
 					reader = new GeoTiffReader(new File(filename), new Hints(
@@ -340,14 +330,12 @@ public class GrassProcess implements Process {
 			}
 		}
 
-		Utils.deleteDir(new File(gisdbase));
-
 		return results;
 
 	}
 
 	private String exportVectorLayer(FeatureCollection fc) {
-		String intermediateFilename = Utils.exportVectorLayer(fc);
+		String intermediateFilename = saveVectorLayer(fc);
 		String destFilename = getTempFilename();
 		exportedLayers.put(fc, destFilename);
 		String command = "v.in.ogr";
@@ -363,7 +351,7 @@ public class GrassProcess implements Process {
 	}
 
 	private String exportRasterLayer(GridCoverage2D gc) {
-		String intermediateFilename = Utils.exportRasterLayer(gc);
+		String intermediateFilename = saveRasterLayer(gc);
 		String destFilename = getTempFilename();
 		exportedLayers.put(gc, destFilename);
 		String command = "r.in.gdal";
@@ -382,20 +370,14 @@ public class GrassProcess implements Process {
 		return filename;
 	}
 
-	public String getDescription() {
-		return description;
-	}
+	@Override
+	public void deleteExportedLayers() {
+		if (isAppSpecificCleared) {
+			return;
+		}
+		// we just delete the mapset
+		deleteDir(new File(gisdbase));
 
-	public Map<String, Parameter<?>> getParameterInfo() {
-		return inputs;
-	}
-
-	public Map<String, Parameter<?>> getResultInfo() {
-		return outputs;
-	}
-
-	public String getName() {
-		return name;
 	}
 
 }

@@ -1,4 +1,4 @@
-package org.geotools.process.external.grass;
+package org.geotools.process.external;
 
 import static org.junit.Assert.assertTrue;
 
@@ -10,26 +10,43 @@ import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.feature.NameImpl;
 import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.process.Process;
+import org.geotools.process.external.saga.SagaProcessFactory;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.junit.Test;
 
-public class GrassTest {
+public class ProcessGroupTest {
 
 	private static final GridCoverageFactory covFactory = CoverageFactoryFinder
 			.getGridCoverageFactory(null);
 
 	@Test
-	public void testGrassProcess() {
+	public void testProcessGroupWithSagaProcesses() {
+		SagaProcessFactory fact = new SagaProcessFactory();
 
-		GrassProcessFactory fact = new GrassProcessFactory();
-		NameImpl name = new NameImpl("grass", "r.fillnulls");
-		Process proc = fact.create(name);
 		GridCoverage2D gc = createFlat();
+
+		ProcessGroup pg = new ProcessGroup();
+
+		NameImpl name = new NameImpl("saga", "convergenceindex");
+		ExternalProcess proc = fact.create(name);
 		HashMap<String, Object> map = new HashMap<String, Object>();
-		map.put("input", gc);
+		map.put("elevation", gc);
+		map.put("method", new Integer(0));
+		map.put("neighbours", new Integer(0));
+		pg.addProcess(proc);
+
+		NameImpl name2 = new NameImpl("saga", "terrainruggednessindextri");
+		ExternalProcess proc2 = fact.create(name2);
+		HashMap<String, Object> map2 = new HashMap<String, Object>();
+		map2.put("dem", gc);
+		pg.addProcess(proc2);
+
 		Map<String, Object> result = proc.execute(map, null);
 		assertTrue(result.size() > 0);
+		Map<String, Object> result2 = proc2.execute(map2, null);
+		assertTrue(result2.size() > 0);
+
+		pg.finish();
 
 	}
 
