@@ -14,9 +14,12 @@ Installation
 GRASS modules are available as GeoScript processes unider both Windows and Linux. The way GeoTools calls GRASS is, however, different depending on the Operating System, and a different configuration is needed.
 
 -If you are running Linux, just install GRASS the usual way, as explained at http://grass.osgeo.org/wiki/Installation_Guide
+
 -Make sure that GRASS is installed by running ``grass`` in a console. You are ready to go, as no further configuration is needed. 
 
+
 -If you are running Windows, install a native WinGRASS package from http://grass.osgeo.org/grass64/binary/mswindows/native/
+
 -Add an environment variable named ``GRASS_BIN_PATH`` and set it to the folder where GRASS is installed
 
 GRASS funcionality has been tested with GRASS 6.5.2, and that is the recommended version to use.
@@ -257,4 +260,78 @@ Once again, as it happened with GRASS algorithms, outputs do not need to be defi
 Optimizing process workflows
 -----------------------------
 
-[To be written]
+Calling external applications from GeoTools involves most of the times writing temporary intermediate files. If you are going to execute several processes together in a processing workflow, it is a good idea to try to minimize the number of intermediate files written to disk, as this is a time-consuming task. There are two ways of optimizing file-handling:
+
+1) Reusing files written by GeoTools. If your data is not file-based, GeoTools will write it to a file so the external application can read it and process it. If several processes use the same GeoTools object as input, it should be written just once for the gloabl process instead of once for each process.
+
+2) Reusing imported files. Some external applications need their files imported before processign them. For instance, GRASS needs data to be imported into a mapset, and SAGA can handle raster files only in its native ``sgrd`` format. They include processes to do that importing from other formats (the ones that GeoTools can write), but it involves an additional step in the process, so imported files should be reused when possible.
+
+To optimize the two issues above, the ``process-external`` module has classes that should be used when writing a process workflow involving several processes. The fundamental idea behind them is to make processes aware of other similar processes that might need to use the same datafiles.
+
+The main class is the ``ProcessGroup`` one, which deals with the first issue, that of reussing files written by GeoTools. This should be used independently of the external application being used, an even if the workflow involves calling processes based on several external applications.
+
+Here is an example on how to use it to run two SAGA algorithms, namely Convergence Index and Terrain Rugedness Index. Both of them use the same DEM as input.
+
+::
+
+
+	ProcessGroup pg = new ProcessGroup();
+
+	NameImpl name = new NameImpl("saga", "convergenceindex");
+	ExternalProcess proc = fact.create(name);
+	HashMap<String, Object> map = new HashMap<String, Object>();
+	map.put("elevation", gc);
+	map.put("method", new Integer(0));
+	map.put("neighbours", new Integer(0));
+	pg.addProcess(proc);
+
+	NameImpl name2 = new NameImpl("saga", "terrainruggednessindextri");
+	ExternalProcess proc2 = fact.create(name2);
+	HashMap<String, Object> map2 = new HashMap<String, Object>();
+	map2.put("dem", gc);
+	pg.addProcess(proc2);
+
+	Map<String, Object> result = proc.execute(map, null);
+	Map<String, Object> result2 = proc2.execute(map2, null);
+
+	pg.finish();
+
+
+As you can see, the only thing to do it is to create a ``ProcessGroup`` object representing the set of related processes to run and then add those processes to it. When all processes are executed, call the ``finish()`` method to clean up. Intermediate layers are not cleaned up by each process in this case.
+
+This code, however, does not optimize the usage of imported layers, and will convert layers to the native SAGA format more than what is strictly needed. To handle that, you have to use also a class that optimizes file-handling for a particular external application. In the case of SAGA, the ``SAGAGroupProcess`` is available for this tasks.
+
+This second class is used in the same way. A single process can be added to several classes derived from the ``GroupProcess`` class. Each class will take care of optimizing a given aspect, as described above.
+
+The above code can be improved, using a ``SAGAGroupProcess`` as shown next.
+
+::
+
+	ProcessGroup pg = new ProcessGroup();
+	SAGAProcessGroup spg = new SAGAProcessGroup();
+
+	NameImpl name = new NameImpl("saga", "convergenceindex");
+	ExternalProcess proc = fact.create(name);
+	HashMap<String, Object> map = new HashMap<String, Object>();
+	map.put("elevation", gc);
+	map.put("method", new Integer(0));
+	map.put("neighbours", new Integer(0));
+	pg.addProcess(proc);
+	spg.addProcess(proc);
+
+	NameImpl name2 = new NameImpl("saga", "terrainruggednessindextri");
+	ExternalProcess proc2 = fact.create(name2);
+	HashMap<String, Object> map2 = new HashMap<String, Object>();
+	map2.put("dem", gc);
+	pg.addProcess(proc2);
+	spg.addProcess(proc2);
+
+	Map<String, Object> result = proc.execute(map, null);
+	Map<String, Object> result2 = proc2.execute(map2, null);
+
+	pg.finish();
+	spg.finish();
+
+This will not only take care of not unnecesarilly repeating imports, but also will handle the case in which the output of a process is used as an input for a next one, minimizing as well the exporting/importing tasks involved in that case.
+
+[Maybe I should add an example with several apps...mixing GRASS and SAGA]
