@@ -4,6 +4,7 @@ import java.awt.RenderingHints.Key;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -21,12 +22,9 @@ public class SagaProcessFactory implements ProcessFactory {
 	HashMap<Name, SagaProcess> processes;
 
 	public SagaProcessFactory() {
-		// TODO: make this relative
-		// URL folder = getClass().getProtectionDomain().getCodeSource()
-		// .getLocation();
-		// String descFile = folder.getPath() + "../resources/grassdesc.txt";
-
-		loadProcesses(new File("D:/sagadesc.txt"));
+		URL url = this.getClass().getResource("/sagadesc.txt");
+		File file = new File(url.getFile());  
+		loadProcesses(file);
 	}
 
 	private void loadProcesses(File descFile) {

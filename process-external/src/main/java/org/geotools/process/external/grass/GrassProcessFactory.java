@@ -4,6 +4,7 @@ import java.awt.RenderingHints.Key;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -22,12 +23,8 @@ public class GrassProcessFactory implements ProcessFactory {
 	HashMap<Name, GrassProcess> processes;
 
 	public GrassProcessFactory() {
-		// TODO: make this relative
-		// URL folder = getClass().getProtectionDomain().getCodeSource()
-		// .getLocation();
-		// String descFile = folder.getPath() + "../resources/grassdesc.txt";
-
-		loadProcesses(new File("D:/grassdesc.txt"));
+		URL url = this.getClass().getResource("/grassdesc.txt");
+		File file = new File(url.getFile());
 	}
 
 	private void loadProcesses(File descFile) {
