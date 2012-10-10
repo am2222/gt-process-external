@@ -14,7 +14,7 @@ import org.geotools.process.external.saga.SagaProcessFactory;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.junit.Test;
 
-public class ProcessGroupTest {
+public class GeneralProcessGroupTest {
 
 	private static final GridCoverageFactory covFactory = CoverageFactoryFinder
 			.getGridCoverageFactory(null);
@@ -25,7 +25,7 @@ public class ProcessGroupTest {
 
 		GridCoverage2D gc = createFlat();
 
-		ProcessGroup pg = new ProcessGroup();
+		GeneralProcessGroup pg = new GeneralProcessGroup();
 
 		NameImpl name = new NameImpl("saga", "convergenceindex");
 		ExternalProcess proc = fact.create(name);

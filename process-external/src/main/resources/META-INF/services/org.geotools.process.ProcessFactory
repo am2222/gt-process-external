@@ -1,1 +1,2 @@
-
+org.geotools.process.external.saga.SagaProcessFactory
+org.geotools.process.external.grass.GrassProcessFactory

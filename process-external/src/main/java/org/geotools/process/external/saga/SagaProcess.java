@@ -14,6 +14,9 @@ import java.util.Set;
 
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.data.DataSourceException;
+import org.geotools.data.DataStore;
+import org.geotools.data.DataStoreFinder;
+import org.geotools.data.FeatureSource;
 import org.geotools.data.Parameter;
 import org.geotools.factory.Hints;
 import org.geotools.feature.FeatureCollection;
@@ -34,9 +37,10 @@ public class SagaProcess extends ExternalProcess {
 	private String modulelib;
 	private String[] extentParamNames;
 	private HashMap<String, String[]> fixedTableCols;
-
+	HashMap<String, String> outputFilenames = new HashMap<String, String>();
 
 	public SagaProcess(String desc) {
+		outputFilenames = new HashMap<String, String>();
 		inputs = new HashMap<String, Parameter<?>>();
 		outputs = new HashMap<String, Parameter<?>>();
 		fixedTableCols = new HashMap<String, String[]>();
@@ -103,12 +107,10 @@ public class SagaProcess extends ExternalProcess {
 		while (iter.hasNext()) {
 			String key = iter.next();
 			params.put(key.toLowerCase(), params_org.get(key));
-		}
-
-		HashMap<String, String> outputFilenames = new HashMap<String, String>();
+		}		
 		
 		ArrayList<String> commands = new ArrayList<String>();
-		exportedLayers = new HashMap<Object, String>();
+		exportedLayers = new HashMap<Object, String[]>();
 		
 		//1. Export layers
 		
@@ -135,10 +137,16 @@ public class SagaProcess extends ExternalProcess {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;
 					for (int i = 0; i < arr.length; i++) {
-						commands.add(exportRasterLayer((GridCoverage2D) arr[i]));
+						String exportCommand = exportRasterLayer((GridCoverage2D) arr[i]); 
+						if (exportCommand != null){
+							commands.add(exportCommand);
+						}
 					}
 				} else {
-					commands.add(exportRasterLayer((GridCoverage2D) value));
+					String exportCommand = exportRasterLayer((GridCoverage2D) value); 
+					if (exportCommand != null){
+						commands.add(exportCommand);
+					}					
 				}
 			} else if (param.getType().equals(FeatureCollection.class)
 					|| (param.getType().isArray() && param.getClass()
@@ -195,12 +203,18 @@ public class SagaProcess extends ExternalProcess {
 						if (i != 0) {
 							s += ",";
 						}
-						s += exportedLayers.get(arr[i]);
+						String[] layers = exportedLayers.get(arr[i]);
+						for (int j = 0; j < layers.length; j++) {
+							if (j != 0) {
+								s += ",";
+							}
+							s += layers[j];
+						}
 					}
 					command += " -" + param.getName() + " \"" + s + "\"";
 				} else {
 					command += " -" + param.getName() + " \""
-							+ exportedLayers.get(value) + "\"";
+							+ exportedLayers.get(value)[0] + "\"";
 				}
 			}else if (param.getType().equals(Double[][].class)) {
                 String tempTableFile = Utils.getTempFilename("sagatable", "txt");
@@ -297,7 +311,7 @@ public class SagaProcess extends ExternalProcess {
 			} 
 		}
 
-		SagaUtils.executeSaga(commands.toArray(new String[0]));
+		SagaUtils.executeSaga(commands.toArray(new String[0]), progress);
 
 		// 4. Open resulting layers and return results map
 
@@ -317,6 +331,9 @@ public class SagaProcess extends ExternalProcess {
 					if (reader != null) {
 						GridCoverage2D gc = (GridCoverage2D) reader.read(null);
 						results.put(key, gc);
+						if (appProcessGroup != null){
+							appProcessGroup.addLayerFilename(gc, new String[]{filename});
+						}
 					}
 				} catch (DataSourceException e) {
 					throw new ProcessException("Error reading result layers:\n"
@@ -326,7 +343,22 @@ public class SagaProcess extends ExternalProcess {
 							+ e.getMessage());
 				}
 			} else if (param.getType().equals(FeatureCollection.class)) {
-
+				try {
+					File file = new File(filename);
+					Map map = new HashMap();
+					map.put("url", file.toURL());
+					DataStore dataStore = DataStoreFinder.getDataStore(map);
+					String typeName = dataStore.getTypeNames()[0];
+					FeatureSource source = dataStore.getFeatureSource(typeName);
+					FeatureCollection fc = source.getFeatures();
+					results.put(key, fc);
+					if (appProcessGroup != null){
+						appProcessGroup.addLayerFilename(fc, new String[]{filename});
+					}
+				} catch (IOException e) {
+					throw new ProcessException("Error reading result layers:\n"
+							+ e.getMessage());
+				}
 			} else {
 				results.put(key, filename);
 			}
@@ -338,13 +370,38 @@ public class SagaProcess extends ExternalProcess {
 
 	private void exportVectorLayer(FeatureCollection fc) {
 		String intermediateFilename = saveVectorLayer(fc);
-		exportedLayers.put(fc, intermediateFilename);
+		exportedLayers.put(fc, new String[] { intermediateFilename });
 	}
 
 	private String exportRasterLayer(GridCoverage2D gc) {
+		// we do not save if it has been saved before in this SagaProcessGroup (in
+		// case the process belong to one)
+		if (appProcessGroup != null) {
+			String[] filename = appProcessGroup.getLayerFilenames(gc);
+			if (filename != null) {
+				return null;
+			}
+		}
 		String intermediateFilename = saveRasterLayer(gc);
 		String destFilename = getTempLayerFilename("raster", "sgrd");
-		exportedLayers.put(gc, destFilename);
+		if (gc.getNumSampleDimensions() > 1) {
+			String[] filenames = new String[gc.getNumSampleDimensions()];
+			String basename = destFilename.substring(0,
+					destFilename.lastIndexOf("."))
+					+ "_000";
+			for (int i = 0; i < filenames.length; i++) {
+				filenames[i] = basename + Integer.toString(i) + ".sgrd";
+			}
+			exportedLayers.put(gc, filenames);
+			if (appProcessGroup != null){
+				appProcessGroup.addLayerFilename(gc, filenames);
+			}
+		} else {
+			exportedLayers.put(gc, new String[] { destFilename });
+			if (appProcessGroup != null){
+				appProcessGroup.addLayerFilename(gc, new String[] { destFilename });
+			}
+		}
 		if (Utils.isWindows()) {
 			return "io_gdal 0 -GRIDS \"" + destFilename + "\" -FILES \""
 					+ intermediateFilename + "\"";
@@ -352,28 +409,48 @@ public class SagaProcess extends ExternalProcess {
 			return "libio_gdal 0 -GRIDS \"" + destFilename + "\" -FILES \""
 					+ intermediateFilename + "\"";
 		}
+
 	}
 
 
 	@Override
 	public void deleteExportedLayers() {
-		// TODO delete also output intermediate files and handle them smartly
+
 		if (isAppSpecificCleared) {
 			return;
 		}
-		Collection<String> layers = exportedLayers.values();
-		for (final String layer : layers) {
-			File[] filesToDelete = new File(tempLayersFolder)
-					.listFiles(new FileFilter() {
-						public boolean accept(File f) {
-							String filename = f.getName();
-							return filename.contains(layer);
+		final Collection<String[]> inputLayers = exportedLayers.values();
+		final Collection<String> outputLayers = outputFilenames.values();
+		File[] filesToDelete = new File(tempLayersFolder).listFiles(new FileFilter() {
+			public boolean accept(File f) {
+				String filename = f.getName();
+				//check if it is an input intermediate files	
+				for (final String[] layer : inputLayers) {
+					for (int i = 0; i < layer.length; i++) {
+						String baseFilename = new File(layer[i]).getName();
+						baseFilename = baseFilename.substring(0,
+								baseFilename.lastIndexOf("."));
+						if (filename.contains(baseFilename)) {
+							return true;
 						}
-					});
-			for (File file : filesToDelete) {
-				file.delete();
+					}
+				}
+				//or an output one
+				for (final String layer : outputLayers) {				
+					String baseFilename = new File(layer).getName();
+					if (baseFilename.endsWith("tif")){					
+						if (filename.contains(baseFilename)) {
+							return true;
+						}
+					}					
+				}
+				return false;
 			}
+		});
+		for (File file : filesToDelete) {
+			file.delete();
 		}
+
 		isAppSpecificCleared = true;
 
 	}

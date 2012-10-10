@@ -1,36 +1,40 @@
-package org.geotools.process.external.saga;
+package org.geotools.process.external.grass;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
+import java.awt.image.Raster;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.geotools.coverage.CoverageFactoryFinder;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
+import org.geotools.coverage.grid.ViewType;
 import org.geotools.feature.NameImpl;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.Process;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.junit.Test;
 
-public class SagaTest {
+public class GrassRasterTest {
 
 	private static final GridCoverageFactory covFactory = CoverageFactoryFinder
 			.getGridCoverageFactory(null);
 
 	@Test
-	public void testConvergenceIndex() {
-		SagaProcessFactory fact = new SagaProcessFactory();
-		NameImpl name = new NameImpl("saga", "convergenceindex");
+	public void testSlopeProcess() {
+
+		GrassProcessFactory fact = new GrassProcessFactory();
+		NameImpl name = new NameImpl("grass", "r.slope.aspect");
 		Process proc = fact.create(name);
 		GridCoverage2D gc = createFlat();
 		HashMap<String, Object> map = new HashMap<String, Object>();
-		map.put("elevation", gc);
-		map.put("method", new Integer(0));
-		map.put("neighbours", new Integer(0));
+		map.put("input", gc);
 		Map<String, Object> result = proc.execute(map, null);
-		assertTrue(result.size() > 0);
+		GridCoverage2D slope = (GridCoverage2D) result.get("slope");
+		Raster data = slope.view(ViewType.NATIVE).getRenderedImage().getData();
+		assertEquals(data.getSampleDouble(1, 1, 0), 0d, 1e-6);
+
 	}
 
 	private static GridCoverage2D createFlat() {

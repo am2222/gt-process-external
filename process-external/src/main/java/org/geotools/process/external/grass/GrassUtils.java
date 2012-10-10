@@ -210,9 +210,9 @@ public class GrassUtils {
 			new File(grassBatchJobFilename()).setExecutable(true);
 			final Process process = pb.start();
 			final StreamGobbler errorGobbler = new StreamGobbler(
-					process.getErrorStream());
+					process.getErrorStream(), progress);
 			final StreamGobbler outputGobbler = new StreamGobbler(
-					process.getInputStream());
+					process.getInputStream(), progress);
 			errorGobbler.start();
 			outputGobbler.start();
 			process.waitFor();
@@ -346,10 +346,12 @@ class StreamGobbler extends Thread {
 
 	InputStream is;
 	String type;
+	private ProgressListener progress;
 
-	StreamGobbler(final InputStream is) {
+	StreamGobbler(final InputStream is, ProgressListener progress) {
 
 		this.is = is;
+		this.progress = progress;
 
 	}
 
@@ -360,11 +362,21 @@ class StreamGobbler extends Thread {
 			final BufferedReader br = new BufferedReader(isr);
 			String line = null;
 			while ((line = br.readLine()) != null) {
-				// try {
-				// GrassUtils.filterGRASSOutput(String.copyValueOf(line.toCharArray()).trim());
-				System.out.println(line);
-				// }
-				// catch (final GrassExecutionException e) {}
+				if (line.contains("GRASS_INFO_PERCENT")) {
+					try {
+
+						int percentage = Integer.parseInt(line
+								.substring("GRASS_INFOR_PERCENT".length() + 2));
+						if (progress != null) {
+							progress.progress(percentage / 100f);
+						}
+					} catch (NumberFormatException e) {
+						// we ignore this
+					}
+				}
+ else {
+					System.out.println(line);
+				}
 			}
 		} catch (final IOException ioe) {
 		}

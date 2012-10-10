@@ -25,6 +25,7 @@ public class GrassProcessFactory implements ProcessFactory {
 	public GrassProcessFactory() {
 		URL url = this.getClass().getResource("/grassdesc.txt");
 		File file = new File(url.getFile());
+		loadProcesses(file);
 	}
 
 	private void loadProcesses(File descFile) {
@@ -101,7 +102,7 @@ public class GrassProcessFactory implements ProcessFactory {
 
 	@Override
 	public InternationalString getTitle() {
-		return new SimpleInternationalString("Grass factory");
+		return new SimpleInternationalString("GRASS factory");
 	}
 
 	@Override

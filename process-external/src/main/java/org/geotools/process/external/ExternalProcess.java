@@ -39,7 +39,9 @@ public abstract class ExternalProcess implements Process {
 	// understandable by the external app (if needed).
 	// These files are created from the ones referred in the exportedLayers map,
 	// by using import processes from the app.
-	protected HashMap<Object, String> exportedLayers = new HashMap<Object, String>();;
+	// A single geotools object can be imported to several files, depending on the
+	// external application
+	protected HashMap<Object, String[]> exportedLayers = new HashMap<Object, String[]>();
 	protected String name;
 	protected String description;
 
@@ -48,11 +50,11 @@ public abstract class ExternalProcess implements Process {
 
 	// A general ProcessGroup. Should be responsible of optimizing usage of
 	// layers referred in the intermediateLayers map
-	protected ProcessGroup processGroup = null;
+	protected GeneralProcessGroup processGroup = null;
 
 	// A process group specific for this process. Should be responsible of
 	// optimizing usage of layers referred in the exportedLayers map
-	protected ProcessGroup appProcessGroup = null;
+	protected AppSpecificProcessGroup appProcessGroup = null;
 
 	// Export a grid coverage to a temporary file in TIF format
 	protected String saveRasterLayer(GridCoverage2D gc) {
@@ -178,8 +180,12 @@ public abstract class ExternalProcess implements Process {
 		return name;
 	}
 
-	public void setProcessGroup(ProcessGroup pg) {
+	public void setGeneralProcessGroup(GeneralProcessGroup pg) {
 		processGroup = pg;
+	}
+	
+	public void setAppSpecificProcessGroup(AppSpecificProcessGroup pg) {
+		appProcessGroup = pg;
 	}
 	
 	public Map<String, Object> execute(Map<String, Object> params,
@@ -200,21 +206,25 @@ public abstract class ExternalProcess implements Process {
 	}
 	
 	public void deleteIntermediateLayers() {
-		if (isCleared){
-			return;
+		if (isCleared) {
+		    return;
 		}
-		Collection<String> layers = intermediateLayers.values();
-		for (final String layer : layers) {
-			File[] filesToDelete = new File(tempLayersFolder)
-					.listFiles(new FileFilter() {
-						public boolean accept(File f) {
-							String filename = f.getName();
-							return filename.contains(layer);
-						}
-					});
-			for (File file : filesToDelete) {
-				file.delete();
+		final Collection<String> layers = intermediateLayers.values();
+		File[] filesToDelete = new File(tempLayersFolder).listFiles(new FileFilter() {
+		    public boolean accept(File f) {
+			String filename = f.getName();
+			for (final String layer : layers) {
+			    String baseFilename = new File(layer).getName();
+			    baseFilename = baseFilename.substring(0, baseFilename.lastIndexOf("."));
+			    if (filename.contains(baseFilename)) {
+				return true;
+			    }
 			}
+			return false;
+		    }
+		});
+		for (File file : filesToDelete) {
+		    file.delete();
 		}
 		isCleared = true;
 	}

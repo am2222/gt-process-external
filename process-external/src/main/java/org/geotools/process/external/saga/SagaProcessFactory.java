@@ -18,7 +18,7 @@ import org.opengis.util.InternationalString;
 
 public class SagaProcessFactory implements ProcessFactory {
 
-	private static final String GRASS_VERSION = "6.4.2";
+	private static final String SAGA_VERSION = "2.0.8";
 	HashMap<Name, SagaProcess> processes;
 
 	public SagaProcessFactory() {
@@ -101,7 +101,7 @@ public class SagaProcessFactory implements ProcessFactory {
 
 	@Override
 	public InternationalString getTitle() {
-		return new SimpleInternationalString("Grass factory");
+		return new SimpleInternationalString("SAGA factory");
 	}
 
 	@Override
@@ -112,7 +112,7 @@ public class SagaProcessFactory implements ProcessFactory {
 
 	@Override
 	public String getVersion(Name name) {
-		return GRASS_VERSION;
+		return SAGA_VERSION;
 	}
 
 	@Override

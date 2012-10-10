@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.geotools.process.ProcessException;
 import org.geotools.process.external.Utils;
+import org.opengis.util.ProgressListener;
 
 public class SagaUtils {
 
@@ -48,7 +49,7 @@ public class SagaUtils {
 
 	}
 
-	public static int executeSaga(String[] commands) {
+	public static int executeSaga(String[] commands, ProgressListener progress) {
 
 		createSagaBatchJobFileFromSagaCommands(commands);
 		final List<String> list = new ArrayList<String>();
@@ -67,9 +68,9 @@ public class SagaUtils {
 		try {
 			process = pb.start();
 			final StreamGobbler errorGobbler = new StreamGobbler(
-					process.getErrorStream());
+					process.getErrorStream(), progress);
 			final StreamGobbler outputGobbler = new StreamGobbler(
-					process.getInputStream());
+					process.getInputStream(), progress);
 			errorGobbler.start();
 			outputGobbler.start();
 			final int iReturn = process.waitFor();
@@ -88,10 +89,12 @@ class StreamGobbler extends Thread {
 
 	InputStream is;
 	String type;
+	ProgressListener progress;
 
-	StreamGobbler(final InputStream is) {
+	StreamGobbler(final InputStream is, ProgressListener progress) {
 
 		this.is = is;
+		this.progress = progress;
 
 	}
 
@@ -102,6 +105,17 @@ class StreamGobbler extends Thread {
 			final BufferedReader br = new BufferedReader(isr);
 			String line = null;
 			while ((line = br.readLine()) != null) {
+				if (line.contains("%")) {
+					try {
+						int percentage = Integer
+								.parseInt(line.replace("%", ""));
+						if (progress != null) {
+							progress.progress(percentage / 100f);
+						}
+					} catch (NumberFormatException e) {
+						// we ignore this
+					}
+				}
 				System.out.println(line);
 			}
 		} catch (final IOException ioe) {

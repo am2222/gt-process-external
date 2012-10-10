@@ -11,6 +11,9 @@ import java.util.Set;
 
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.data.DataSourceException;
+import org.geotools.data.DataStore;
+import org.geotools.data.DataStoreFinder;
+import org.geotools.data.FeatureSource;
 import org.geotools.data.Parameter;
 import org.geotools.factory.Hints;
 import org.geotools.feature.FeatureCollection;
@@ -30,7 +33,6 @@ public class GrassProcess extends ExternalProcess {
 	public static final Object GRASS_LATLON = "latlon";
 
 	private String grassCommand;
-	private HashMap<Object, String> exportedLayers;
 	private String gisdbase;
 
 	public GrassProcess(String desc) {
@@ -84,7 +86,7 @@ public class GrassProcess extends ExternalProcess {
 		}
 
 		ArrayList<String> commands = new ArrayList<String>();
-		exportedLayers = new HashMap<Object, String>();
+		exportedLayers = new HashMap<Object, String[]>();
 
 		boolean latlon = false;
 		if (params.containsKey(GRASS_LATLON)) {
@@ -155,6 +157,7 @@ public class GrassProcess extends ExternalProcess {
 			cellsize = ((Double) params.get(GRASS_REGION_CELLSIZE_PARAMETER));
 		}
 
+		// TODO consider multiple input
 		String command = "g.region";
 		if (region == null || cellsize == null) {
 			boolean found = false;
@@ -169,12 +172,14 @@ public class GrassProcess extends ExternalProcess {
 				}
 				if (value != null) {
 					if (param.getType().equals(GridCoverage2D.class)) {
-						command += " rast=" + exportedLayers.get(value);
+						command += " rast=" + exportedLayers.get(value)[0];
 						found = true;
 						break;
 					}
 					if (param.getType().equals(FeatureCollection.class)) {
-						command += " vect=" + exportedLayers.get(value);
+						command += " vect=" + exportedLayers.get(value)[0];
+						found = true;
+						break;
 					}
 				}
 			}
@@ -224,12 +229,12 @@ public class GrassProcess extends ExternalProcess {
 						if (i != 0) {
 							s += ",";
 						}
-						s += exportedLayers.get(arr[i]);
+						s += exportedLayers.get(arr[i])[0];
 					}
 					command += " " + param.getName() + "=" + s;
 				} else {
 					command += " " + param.getName() + "="
-							+ exportedLayers.get(value);
+							+ exportedLayers.get(value)[0];
 				}
 			} else if (param.getType().equals(Boolean.class)) {
 				if (new Boolean(value.toString()).booleanValue()) {
@@ -324,7 +329,19 @@ public class GrassProcess extends ExternalProcess {
 							+ e.getMessage());
 				}
 			} else if (param.getType().equals(FeatureCollection.class)) {
-
+				try {
+					File file = new File(filename);
+					Map map = new HashMap();
+					map.put("url", file.toURL());
+					DataStore dataStore = DataStoreFinder.getDataStore(map);
+					String typeName = dataStore.getTypeNames()[0];
+					FeatureSource source = dataStore.getFeatureSource(typeName);
+					FeatureCollection fc = source.getFeatures();
+					results.put(key, fc);
+				} catch (IOException e) {
+					throw new ProcessException("Error reading result layers:\n"
+							+ e.getMessage());
+				}
 			} else {
 				results.put(key, filename);
 			}
@@ -337,7 +354,7 @@ public class GrassProcess extends ExternalProcess {
 	private String exportVectorLayer(FeatureCollection fc) {
 		String intermediateFilename = saveVectorLayer(fc);
 		String destFilename = getTempFilename();
-		exportedLayers.put(fc, destFilename);
+		exportedLayers.put(fc, new String[] { destFilename });
 		String command = "v.in.ogr";
 		command += " min_area=-1";
 		command += " dsn=\"" + new File(intermediateFilename).getParent()
@@ -353,7 +370,7 @@ public class GrassProcess extends ExternalProcess {
 	private String exportRasterLayer(GridCoverage2D gc) {
 		String intermediateFilename = saveRasterLayer(gc);
 		String destFilename = getTempFilename();
-		exportedLayers.put(gc, destFilename);
+		exportedLayers.put(gc, new String[] { destFilename });
 		String command = "r.in.gdal";
 		command += " input=\"" + intermediateFilename + "\"";
 		command += " band=1";
