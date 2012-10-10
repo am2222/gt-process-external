@@ -121,7 +121,7 @@ public class GrassProcess extends ExternalProcess {
 				}
 			}
 			if (param.getType().equals(GridCoverage2D.class)
-					|| (param.getType().isArray() && param.getClass()
+					|| (param.getType().isArray() && param.getType()
 							.getComponentType().equals(GridCoverage2D.class))) {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;
@@ -132,7 +132,7 @@ public class GrassProcess extends ExternalProcess {
 					commands.add(exportRasterLayer((GridCoverage2D) value));
 				}
 			} else if (param.getType().equals(FeatureCollection.class)
-					|| (param.getType().isArray() && param.getClass()
+					|| (param.getType().isArray() && param.getType()
 							.getComponentType().equals(FeatureCollection.class))) {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;

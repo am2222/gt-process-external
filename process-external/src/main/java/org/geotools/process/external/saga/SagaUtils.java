@@ -116,7 +116,9 @@ class StreamGobbler extends Thread {
 						// we ignore this
 					}
 				}
-				System.out.println(line);
+				if (line.length() > 5){
+					System.out.println(line);
+				}
 			}
 		} catch (final IOException ioe) {
 

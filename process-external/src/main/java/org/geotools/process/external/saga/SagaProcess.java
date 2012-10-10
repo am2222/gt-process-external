@@ -33,7 +33,7 @@ public class SagaProcess extends ExternalProcess {
 
 	public static final String SAGA_OUTPUT_EXTENT = "extent";
 
-	private String fullname;
+	private String cmdname;
 	private String modulelib;
 	private String[] extentParamNames;
 	private HashMap<String, String[]> fixedTableCols;
@@ -45,8 +45,14 @@ public class SagaProcess extends ExternalProcess {
 		outputs = new HashMap<String, Parameter<?>>();
 		fixedTableCols = new HashMap<String, String[]>();
 		String[] lines = desc.split("\n");
-		description = fullname = lines[0].trim();
-		name = fullname.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+		description = cmdname = lines[0].trim();
+		
+		if (description.contains("|")){
+			String[] tokens = description.split("\\|");
+			cmdname = tokens[1];
+			description = tokens[0];
+		}		
+		name = description.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
 		modulelib = lines[1].trim();
 		for (int i = 2; i < lines.length; i++) {
 			String line = lines[i].trim();
@@ -132,7 +138,7 @@ public class SagaProcess extends ExternalProcess {
 				}
 			}
 			if (param.getType().equals(GridCoverage2D.class)
-					|| (param.getType().isArray() && param.getClass()
+					|| (param.getType().isArray() && param.getType()
 							.getComponentType().equals(GridCoverage2D.class))) {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;
@@ -149,7 +155,7 @@ public class SagaProcess extends ExternalProcess {
 					}					
 				}
 			} else if (param.getType().equals(FeatureCollection.class)
-					|| (param.getType().isArray() && param.getClass()
+					|| (param.getType().isArray() && param.getType()
 							.getComponentType().equals(FeatureCollection.class))) {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;
@@ -168,10 +174,10 @@ public class SagaProcess extends ExternalProcess {
 		String command = new String();
 		
 		if (Utils.isWindows()){
-            command = modulelib + " \"" + fullname + "\"";
+            command = modulelib + " \"" + cmdname + "\"";
 		}
 		else{
-			command = "lib" + modulelib + " \"" + fullname + "\"";
+			command = "lib" + modulelib + " \"" + cmdname + "\"";
 		}
 		
 		set = inputs.keySet();
@@ -332,7 +338,7 @@ public class SagaProcess extends ExternalProcess {
 						GridCoverage2D gc = (GridCoverage2D) reader.read(null);
 						results.put(key, gc);
 						if (appProcessGroup != null){
-							appProcessGroup.addLayerFilename(gc, new String[]{filename});
+							appProcessGroup.addLayerFilename(gc, new String[]{filename + ".sgrd"});
 						}
 					}
 				} catch (DataSourceException e) {
@@ -377,8 +383,9 @@ public class SagaProcess extends ExternalProcess {
 		// we do not save if it has been saved before in this SagaProcessGroup (in
 		// case the process belong to one)
 		if (appProcessGroup != null) {
-			String[] filename = appProcessGroup.getLayerFilenames(gc);
-			if (filename != null) {
+			String[] filenames = appProcessGroup.getLayerFilenames(gc);
+			if (filenames != null) {
+				exportedLayers.put(gc, filenames);
 				return null;
 			}
 		}

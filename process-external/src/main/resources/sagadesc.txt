@@ -309,9 +309,9 @@ ParameterRaster|INIT_GRID|Initiation Grid|False
 ParameterSelection|INIT_METHOD|Initiation Type|[0] Less than;[1] Equals;[2] Greater than
 ParameterNumber|INIT_VALUE|Initiation Threshold|None|None|0.0
 ParameterRaster|DIV_GRID|Divergence|True
-ParameterNumber|DIV_CELLS|Tracing: Max. Divergence|None|None|10.0
+ParameterNumber|DIV_CELLS|Tracing: Max. Divergence|None|None|10
 ParameterRaster|TRACE_WEIGHT|Tracing: Weight|True
-ParameterNumber|MINLEN|Min. Segment Length|0.0|None|10.0
+ParameterNumber|MINLEN|Min. Segment Length|0.0|None|10
 OutputRaster|CHNLNTWRK|Channel Network
 OutputRaster|CHNLROUTE|Channel Direction
 OutputVector|SHAPES|Channel Network
@@ -2578,7 +2578,7 @@ Extent USER_X_EXTENT_MIN USER_X_EXTENT_MAX USER_Y_EXTENT_MIN USER_Y_EXTENT_MIN
 OutputRaster|GRID|Grid
 OutputRaster|VARIANCE|Variance
 ----
-Upslope Area
+Upslope Area|4
 ta_hydrology
 ParameterRaster|TARGET|Target Area|True
 ParameterNumber|TARGET_PT_X|Target X coordinate|None|None|0.0
