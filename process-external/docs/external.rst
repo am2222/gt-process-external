@@ -1,7 +1,7 @@
 Consuming external geoprocesses from GeoTools. The ``process-external`` module
 ********************************************************************************
 
-The ``process-external`` module wraps several external applications with geoprocessing capabilities, so they can be used to process GeoTools-based objects such as FeatureCollection or GridCoverage2D. External geoprocesses are wrapped as GeoTools processes and available through the corresponding factories, one for each application. Processes are called in much the same way as native ones. The factory is responsible of handling the necessary data conversions or other operations needed to ensure communication between the application and GeoTools.
+The ``process-external`` module wraps several external applications with geoprocessing capabilities, so they can be used to process GeoTools-based objects such as ``FeatureCollection`` or ``GridCoverage2D``. External geoprocesses are wrapped as GeoTools processes and available through the corresponding factories, one for each application. Processes are called in much the same way as native ones. The factory is responsible of handling the necessary data conversions or other operations needed to ensure communication between the application and GeoTools.
 
 Below is a description of the external applications currently supported, how to properly install them so GeoTools can make use of them, and how to call their processes.
 
@@ -27,7 +27,7 @@ GRASS funcionality has been tested with GRASS 6.5.2, and that is the recommended
 Calling GRASS modules
 ----------------------
 
-GRASS-based processes are obtained from the ``GrassProcessFactory``. The name of the process is created with the ``grass`` namespace and the name of the module to execute, as it would be used from the GRASS command-line interface. For example, to get an instance of the ``r.fillgaps`` module ready to run, the following code can be used:
+GRASS-based processes are obtained from the ``GrassProcessFactory``. The name of the process is created with the ``grass`` namespace and the name of the module to execute, as it would be used from the GRASS command-line interface. For example, to get an instance of the ``r.fillnulls`` module ready to run, the following code can be used:
 
 ::
 
@@ -35,7 +35,7 @@ GRASS-based processes are obtained from the ``GrassProcessFactory``. The name of
 	NameImpl name = new NameImpl("grass", "r.fillnulls");
 	Process proc = fact.create(name);
 
-The execute module, just like with any other GeoTools geoprocess, takes a ``Map<String, Object>``, having parameter names as keys and parameter values as map values. In the case of a process wrappping a GRASS command, the names of the parameter match their names when calling thar grass command from a command-line interface. In other words, it matches the parameter names that can be found in the corresponding GRASS help files or are produced by the ``interface-description`` modifier when describing the inputs needed by the module.
+The execute method of the ``Process`` object, just like with any other GeoTools process, takes a ``Map<String, Object>`` object, having parameter names as keys and parameter values as map values. In the case of a process wrappping a GRASS command, the names of the parameters match their names when calling thar grass command from a command-line interface. In other words, it matches the parameter names that can be found in the corresponding GRASS help files or are produced by the ``interface-description`` modifier when describing the inputs needed by the module.
 
 In the above case of the ``r.fillnulls`` module, the following is the parameter description from the GRASS documentation:
 
@@ -88,7 +88,7 @@ Raster layers are passed as ``GridCoverage2D`` objects, while vector layers are 
 
 For the remaining types of input, the mapping from string literals used in the GRASS console to Java objects is rather straightforward. In the case of a parameter that accepts values from a list (like a method to use, to be selected from a set of available ones), check the GRASS module documentation and pass the selected option as a ``String`` object, with the same value that would be used for a command-line call.
 
-Flags are also considered as parameters, and are set using a ``Boolean`` value. The double hyphen preceding the flag name should not be added to the name of the parameter.
+Flags are also considered as parameters, and are set using a ``Boolean`` value. The hyphen (or double hyphen) preceding the flag name should not be added to the name of the parameter. 
 
 Along with the parameters that correspond to the GRASS module itself, there are always three additional ones that are used to configure properties that in a normal GRASS session would the configured otherwise, but that in this case, and since we are executing GRASS from *outside* of it, are configured as just extra parameters. These additional parameters are the following ones:
 
@@ -100,29 +100,29 @@ For users unfamiliar with the concept of *region* in GRASS, reading the followin
 
 As you can see from the example shown before, all these three extra parameters are optional. The region cellsize has a default value of 1 (care should be taking when accepting this default value, as it can be too small in many cases, resulting in huge raster layers), while the ``latlon`` parameter is false by default.
 
-There is no default value for the region extent, but if the process takes some layer as input, it will be taken from the set of input layer in case is not explicitly set. PArticularly, the minimum extent needed to cover all input layers will be used. Only when there are no input layers and the region extent cannot be inferred, the ``regionextent`` parameter is mandatory. In that case, executing the process without explicitly setting its valus will result in an exception being thrown.
+There is no default value for the region extent, but if the process takes some layer as input, it will be taken from the set of input layers in case is not explicitly set. Particularly, the minimum extent needed to cover all input layers will be used. Only when there are no input layers and the region extent cannot be inferred, the ``regionextent`` parameter is mandatory. In that case, executing the process without explicitly setting its valus will result in an exception being thrown.
 
 In case there are input raster layers and a region cellsize is not provided, it will also be inferred from those layers. The minimum cellsize of all input raster layers will be used.
 
 Most parameters except layers are optional, like string values or numerical ones, since there is a default value to use. In the case of a parameter to select from a list of possible ones, the first option is used in case a value for that parameter is not provided.
 
-Parameters reprenting outputs do not have to be set. Outputs stored in temporary files, and the GeoTools-GRASS interface will take care of deleting them when necessary. As it is explained next, for a single output file, several intermediate files will be generated as well, but you do not have to worry about that.
+Parameters representing outputs do not have to be set. Outputs are stored in temporary files, and the GeoTools-GRASS interface will take care of deleting them when necessary. As it is explained next, for a single output file, several intermediate files will be generated as well, but you do not have to worry about that.
 
 Internal mechanism of the GeoTools-GRASS interface
 ---------------------------------------------------------
 
 Here is some more technical and detailed information about how the GRASS interface works.
 
-Executing a GRASS-based process in GeoTools involves the following steps.
+Executing a GRASS-based process in GeoTools involves the following steps:
 
-- Writting the corresponding GeoTools object(s) to file(s), in a GDAL/OGR compatible format that can be read by GRASS.
+- Writing the corresponding GeoTools object(s) to file(s), in a GDAL/OGR compatible format that can be read by GRASS.
 - Creating a temporary GRASS mapset.
-- Import the files representing the GeoTools data objects into the GRASS mapset.
-- Perform the corresponding analysis.
-- Export the results to a format readable by GeoTools
-- Open the results and create the corresponding GeoTools objects.
+- Importing the files representing the GeoTools data objects into the GRASS mapset.
+- Performing the corresponding analysis.
+- Exporting the results to a format readable by GeoTools
+- Opening the results and create the corresponding GeoTools objects.
 
-Parts of this workflow can be skipped and optimized. Some of this optimization is done automatically by the processing factory, while some can be done manually. Particularly, if the GeoTools object data source is of a format that can be read by GRASS, the exporting part is ommitted and the source directly accessed.
+Parts of this workflow can be skipped and optimized. Some of this optimization is done automatically by the processing factory, while some can be done manually. Particularly, if the GeoTools object data source is of a format that can be read by GRASS, the first exporting/writing to file part is ommitted and the source directly accessed.
 
 
 SAGA
@@ -165,17 +165,17 @@ SAGA algorithms are called by GeoTools using its command line version ``saga_cmd
 	.
 
 
--If you are running Linux, packages are available from https://launchpad.net/~johanvdw/+archive/saga-gis
--After installing, just make sure that the command line version of SAGA is available, by running ``saga_cmd`` from a console.
+- If you are running Linux, packages are available from https://launchpad.net/~johanvdw/+archive/saga-gis
+- After installing, just make sure that the command line version of SAGA is available, by running ``saga_cmd`` from a console.
 
 In all cases, SAGA 2.0.8 is recommended, as it is the only version tested and supported for running from GeoTools.
 
 Calling SAGA geoalgorithms
 ----------------------------
 
-Like GRASS algorithms, SAGA algorithm are obtained from the corresponding factory (``SagaProcessFactory``), and executed using the ``execute`` method with a map of parameter names and values.
+Like GRASS algorithms, SAGA algorithms are obtained from the corresponding factory (``SagaProcessFactory``), and executed using the ``execute`` method with a map of parameter names and values.
 
-The process has ``saga`` as its namespace, and the name of the process is obtained by removing all character other than letters from the SAGA geoalgorithm name and putting it in lower case. 
+The process has ``saga`` as its namespace, and the name of the process is obtained by removing all characters other than letters from the SAGA geoalgorithm name and putting it in lower case. 
 
 Below you can see a listing of the 5 first algorithms in the ``ta_morphometry`` library.
 
@@ -230,21 +230,9 @@ And here is the corresponding GeoTools process call:
 
 Keys used for the parameter map match the names of the parameters, except for the case of boolean ones, which contain a hyphen that should be removed.
 
-Another exception is found in processes requiring an extent (like, for instance, most interpolation ones). While SAGA solves this by asking the user 4 parameters (usually in the form of ``xmin, xmax, ymin`` and ``ymax`` parameters, though names vary across geoalgorithms), the corresponding GeoTools processes substitute the set of 4 parameters with a single parameters named ``extent``, which takes a  ``ReferencedEnvelope`` object. Here is an example to help understanding this mechanism. Below you can see the command line SAGA call for the Inverse Distance Weighting algorithm
-
-::
-
-	$ 
-
-To execute the corresponding GeoTools process, the following block of code would be needed.
-
-
-::
-
-
 Notice that parameters that can take a value from a list of predefined ones are set using the zero-based index of the option to use, not its name or a text input, as it happened with GRASS.
 
-As in the case of GRASS processes, most parameters can be ommited, as there are default values that can be used. The above code could be susbsituted by the following, more compact one:
+As in the case of GRASS processes, most parameters can be ommited, as there are default values that can be used. The above Convergence Index code could be replaced by the following, more compact one:
 
 ::
 
@@ -257,6 +245,29 @@ As in the case of GRASS processes, most parameters can be ommited, as there are 
 
 Once again, as it happened with GRASS algorithms, outputs do not need to be defined.
 
+A particular case is found in processes requiring an extent (like, for instance, most interpolation ones). While SAGA solves this by asking the user 4 parameters (usually in the form of ``xmin, xmax, ymin`` and ``ymax`` parameters, though names vary across geoalgorithms), the corresponding GeoTools processes substitute the set of 4 parameters with a single parameters named ``extent``, which takes a  ``ReferencedEnvelope`` object. Here is an example to help understanding this mechanism. Below you can see an example command line SAGA call for the Inverse Distance Weighting algorithm
+
+::
+
+	$ saga_cmd grid_gridding "Inverse Distance Weighted" -FIELD "value"   -USER_XMIN 0.0 -USER_XMAX 30.0 -USER_YMIN 0.0 -USER_YMAX 30.0 -USER_SIZE 0.5  -TARGET 0 -SHAPES "/home/me/myshapefile.shp" -USER_GRID "/home/me/mytiffile.tif"
+
+To execute the corresponding GeoTools process, the following block of code would be needed.
+
+
+::
+
+	ReferencedEnvelope bounds = new ReferencedEnvelope(0, 30, 0, 30, DefaultGeographicCRS.WGS84);
+	SagaProcess proc = fact.create(new NameImpl("saga","inversedistanceweighted"));
+        Map<String, Object> result = proc.execute(
+        		new KVP("shapes", fc, 
+				"field", "value", 
+				"extent", bounds, 
+				"user_size", Double.valueOf(.5)), 
+        		null)
+``fc`` being a ``FeatureCollection`` with the points used as input.
+
+Notice that the CRS of the ``ReferencedEnvelope`` object is ignored. Notice also that using the KVP class is a handy alternative to creating a ``Map`` object as it was done in the other previous examples.
+
 Optimizing process workflows
 -----------------------------
 
@@ -268,14 +279,14 @@ Calling external applications from GeoTools involves most of the times writing t
 
 To optimize the two issues above, the ``process-external`` module has classes that should be used when writing a process workflow involving several processes. The fundamental idea behind them is to make processes aware of other similar processes that might need to use the same datafiles.
 
-The main class is the ``ProcessGroup`` one, which deals with the first issue, that of reussing files written by GeoTools. This should be used independently of the external application being used, an even if the workflow involves calling processes based on several external applications.
+The main class is the ``GeneralProcessGroup`` one, which deals with the first issue, that of reussing files written by GeoTools. This should be used independently of the external application being used, an even if the workflow involves calling processes based on several external applications.
 
 Here is an example on how to use it to run two SAGA algorithms, namely Convergence Index and Terrain Rugedness Index. Both of them use the same DEM as input.
 
 ::
 
 
-	ProcessGroup pg = new ProcessGroup();
+	GeneralProcessGroup pg = new GeneralProcessGroup();
 
 	NameImpl name = new NameImpl("saga", "convergenceindex");
 	ExternalProcess proc = fact.create(name);
@@ -299,16 +310,16 @@ Here is an example on how to use it to run two SAGA algorithms, namely Convergen
 
 As you can see, the only thing to do it is to create a ``ProcessGroup`` object representing the set of related processes to run and then add those processes to it. When all processes are executed, call the ``finish()`` method to clean up. Intermediate layers are not cleaned up by each process in this case.
 
-This code, however, does not optimize the usage of imported layers, and will convert layers to the native SAGA format more than what is strictly needed. To handle that, you have to use also a class that optimizes file-handling for a particular external application. In the case of SAGA, the ``SAGAGroupProcess`` is available for this tasks.
+This code, however, does not optimize the usage of imported layers, and will convert layers to the native SAGA format more than what is strictly needed. To handle that, you have to use also a class that optimizes file-handling for a particular external application. In the case of SAGA, the ``SagaProcessGroup`` is available for this task.
 
-This second class is used in the same way. A single process can be added to several classes derived from the ``GroupProcess`` class. Each class will take care of optimizing a given aspect, as described above.
+This second class is used in the same way. A single process can be added to several classes representign a set of processes. Each class will take care of optimizing a given aspect, as described above.
 
-The above code can be improved, using a ``SAGAGroupProcess`` as shown next.
+The above code can be improved, using a ``SagaProcessGroup`` as shown next.
 
 ::
 
-	ProcessGroup pg = new ProcessGroup();
-	SAGAProcessGroup spg = new SAGAProcessGroup();
+	GeneralProcessGroup pg = new GeneralProcessGroup();
+	SagaProcessGroup spg = new SagaProcessGroup();
 
 	NameImpl name = new NameImpl("saga", "convergenceindex");
 	ExternalProcess proc = fact.create(name);
@@ -332,6 +343,4 @@ The above code can be improved, using a ``SAGAGroupProcess`` as shown next.
 	pg.finish();
 	spg.finish();
 
-This will not only take care of not unnecesarilly repeating imports, but also will handle the case in which the output of a process is used as an input for a next one, minimizing as well the exporting/importing tasks involved in that case.
-
-[Maybe I should add an example with several apps...mixing GRASS and SAGA]
+This will not only take care of not unnecesarilly repeating imports, but also will handle the case (not shown here) in which the output of a process is used as an input for a next one, minimizing as well the exporting/importing tasks involved in that case.
