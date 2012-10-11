@@ -16,27 +16,21 @@ import org.opengis.util.ProgressListener;
 
 public class SagaUtils {
 
-	private static String sagaBatchJobFilename;
-
-	public static String getBatchJobFilename() {
-		if (sagaBatchJobFilename == null) {
-			String ext = "sh";
-			if (Utils.isWindows()) {
-				ext = "bat";
-			}
-			sagaBatchJobFilename = Utils.getTempFilename("saga_batchjob",
-						ext);
+	public static String getBatchJobFilename() {		
+		String ext = "sh";
+		if (Utils.isWindows()) {
+			ext = "bat";
 		}
+		String sagaBatchJobFilename = Utils.getTempFilename("saga_batchjob", ext);
 		return sagaBatchJobFilename;
 	}
 
 	public static void createSagaBatchJobFileFromSagaCommands(
-			final String[] commands) {
+			final String[] commands, String batchJobFilename) {
 
-		final String sFilename = getBatchJobFilename();
 		try {
 			final BufferedWriter output = new BufferedWriter(new FileWriter(
-					sFilename));
+					batchJobFilename));
 			for (int i = 0; i < commands.length; i++) {
 				output.write("saga_cmd " + commands[i] + "\n");
 			}
@@ -51,17 +45,18 @@ public class SagaUtils {
 
 	public static int executeSaga(String[] commands, ProgressListener progress) {
 
-		createSagaBatchJobFileFromSagaCommands(commands);
+		String batchJobFilename = getBatchJobFilename();
+		createSagaBatchJobFileFromSagaCommands(commands, batchJobFilename);
 		final List<String> list = new ArrayList<String>();
 		ProcessBuilder pb;
 		pb = new ProcessBuilder(list);
 		if (!Utils.isWindows()) {
-			new File(getBatchJobFilename()).setExecutable(true);
-			list.add(getBatchJobFilename());
+			new File(batchJobFilename).setExecutable(true);
+			list.add(batchJobFilename);
 		} else {
 			list.add("cmd.exe");
 			list.add("/C");
-			list.add(getBatchJobFilename());
+			list.add(batchJobFilename);
 		}
 
 		Process process;
@@ -74,6 +69,7 @@ public class SagaUtils {
 			errorGobbler.start();
 			outputGobbler.start();
 			final int iReturn = process.waitFor();
+			new File(batchJobFilename).delete();
 			return iReturn;
 		} catch (final Exception e) {
 			throw new ProcessException("Error executing SAGA:\n"
@@ -117,7 +113,7 @@ class StreamGobbler extends Thread {
 					}
 				}
 				if (line.length() > 5){
-					System.out.println(line);
+					//System.out.println(line);
 				}
 			}
 		} catch (final IOException ioe) {

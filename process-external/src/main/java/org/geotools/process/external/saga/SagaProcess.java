@@ -91,7 +91,7 @@ public class SagaProcess extends ExternalProcess {
 						new SimpleInternationalString("Output extent"), true,
 						1, 1, null, null);
 				inputs.put(this.SAGA_OUTPUT_EXTENT, param);
-				extentParamNames = line.substring(6).split(" ");
+				extentParamNames = line.substring(7).split(" ");
 			} else if (line.equals("")) {
 				break;
 			} else {

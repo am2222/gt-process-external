@@ -44,7 +44,7 @@ public class HydrologyExampleTest {
 		GridCoverage2D gc = getDEM();
 		HydrologyExampleProcess proc = new HydrologyExampleProcess();
 		FeatureCollection result = proc.execute(gc, Double.valueOf(1000000),new Coordinate(1, 1), null);		
-		assertEquals(result.size(), 10);		
+		assertEquals(result.size(), 62);		
 
 	}
 

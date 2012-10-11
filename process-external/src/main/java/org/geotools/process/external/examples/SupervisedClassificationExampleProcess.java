@@ -15,7 +15,8 @@ import org.geotools.process.gs.GSProcess;
 import org.opengis.util.ProgressListener;
 
 /**
- * A rendering transform that performs on-the-fly supervised classification
+ * A process that performs supervised classification and vectorises the resulting layer
+ * This could be used as a rendering transform to perform on-the-fly classification and vectorization
  * 
  * @author Volaya
  * 
