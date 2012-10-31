@@ -21,6 +21,7 @@ import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.ProcessException;
 import org.geotools.process.external.ExternalProcess;
+import org.geotools.process.external.GrassProcessGroup;
 import org.geotools.process.external.Parameters;
 import org.geotools.process.external.Utils;
 import org.geotools.util.SimpleInternationalString;
@@ -76,6 +77,7 @@ public class GrassProcess extends ExternalProcess {
 			ProgressListener progress) throws ProcessException {
 
 		HashMap<String, String> outputFilenames = new HashMap<String, String>();
+		HashMap<String, String> intermediateOutputFilenames = new HashMap<String, String>();
 
 		if (Utils.isWindows()) {
 			String path = GrassUtils.grassPath();
@@ -95,7 +97,17 @@ public class GrassProcess extends ExternalProcess {
 		}
 
 		try {
-			gisdbase = GrassUtils.createMapset(latlon);
+			if (appProcessGroup != null) {
+				gisdbase = ((GrassProcessGroup)appProcessGroup).getGisdbase();
+				if (gisdbase == null){
+					gisdbase = GrassUtils.createMapset(latlon);
+					((GrassProcessGroup)appProcessGroup).setGisdbase(gisdbase);
+				}
+			}
+			else{
+				gisdbase = GrassUtils.createMapset(latlon);
+			}
+				
 		} catch (IOException e) {
 			throw new ProcessException("Error creating GRASS mapset:\n"
 					+ e.getMessage());
@@ -126,10 +138,16 @@ public class GrassProcess extends ExternalProcess {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;
 					for (int i = 0; i < arr.length; i++) {
-						commands.add(exportRasterLayer((GridCoverage2D) arr[i]));
+						String exportCommand = exportRasterLayer((GridCoverage2D) arr[i]); 
+						if (exportCommand != null){
+							commands.add(exportCommand);
+						}
 					}
 				} else {
-					commands.add(exportRasterLayer((GridCoverage2D) value));
+					String exportCommand = exportRasterLayer((GridCoverage2D) value); 
+					if (exportCommand != null){
+						commands.add(exportCommand);
+					}					
 				}
 			} else if (param.getType().equals(FeatureCollection.class)
 					|| (param.getType().isArray() && param.getType()
@@ -137,10 +155,16 @@ public class GrassProcess extends ExternalProcess {
 				if (param.getType().isArray()) {
 					Object[] arr = (Object[]) value;
 					for (int i = 0; i < arr.length; i++) {
-						commands.add(exportVectorLayer((FeatureCollection) arr[i]));
+						String exportCommand = exportVectorLayer((FeatureCollection) arr[i]); 
+						if (exportCommand != null){
+							commands.add(exportCommand);
+						}						
 					}
 				} else {
-					commands.add(exportVectorLayer((FeatureCollection) value));
+					String exportCommand = exportVectorLayer((FeatureCollection) value); 
+					if (exportCommand != null){
+						commands.add(exportCommand);
+					}
 				}
 			}
 
@@ -263,7 +287,9 @@ public class GrassProcess extends ExternalProcess {
 					filename = getTempLayerFilename(key, "shp");
 				}
 				outputFilenames.put(key, filename);
-				command += ' ' + param.getName() + '=' + param.getName();
+				String intermediateFilename = getTempFilename();
+				intermediateOutputFilenames.put(key,intermediateFilename);
+				command += ' ' + param.getName() + '=' + intermediateFilename;//param.getName();
 			}
 		}
 
@@ -282,12 +308,12 @@ public class GrassProcess extends ExternalProcess {
 				commands.add("g.region rast=" + param.getName());
 				command = "r.out.gdal -c createopt=\"TFW=YES,COMPRESS=LZW\"";
 				command += " input=";
-				command += param.getName();
+				command += intermediateOutputFilenames.get(key);
 				command += " output=\"" + filename + "\"";
 				commands.add(command);
 			} else if (param.getType().equals(FeatureCollection.class)) {
 				String filename = outputFilenames.get(key);
-				command = "v.out.ogr -ce input=" + param.getName();
+				command = "v.out.ogr -ce input=" + intermediateOutputFilenames.get(key);
 				command += " dsn=\"" + new File(filename).getParent() + "\"";
 				command += " format=ESRI_Shapefile";
 				String name = new File(filename).getName();
@@ -320,6 +346,9 @@ public class GrassProcess extends ExternalProcess {
 				if (reader != null) {
 					GridCoverage2D gc = (GridCoverage2D) reader.read(null);
 					results.put(key, gc);
+					if (appProcessGroup != null){
+						appProcessGroup.addLayerFilename(gc, new String[]{intermediateOutputFilenames.get(key)});
+					}
 				}
 				} catch (DataSourceException e) {
 					throw new ProcessException("Error reading result layers:\n"
@@ -338,6 +367,9 @@ public class GrassProcess extends ExternalProcess {
 					FeatureSource source = dataStore.getFeatureSource(typeName);
 					FeatureCollection fc = source.getFeatures();
 					results.put(key, fc);
+					if (appProcessGroup != null){
+						appProcessGroup.addLayerFilename(fc, new String[]{intermediateOutputFilenames.get(key)});
+					}
 				} catch (IOException e) {
 					throw new ProcessException("Error reading result layers:\n"
 							+ e.getMessage());
@@ -352,9 +384,19 @@ public class GrassProcess extends ExternalProcess {
 	}
 
 	private String exportVectorLayer(FeatureCollection fc) {
+		if (appProcessGroup != null) {
+			String[] filenames = appProcessGroup.getLayerFilenames(fc);
+			if (filenames != null) {
+				exportedLayers.put(fc, filenames);
+				return null;
+			}
+		}
 		String intermediateFilename = saveVectorLayer(fc);
 		String destFilename = getTempFilename();
 		exportedLayers.put(fc, new String[] { destFilename });
+		if (appProcessGroup != null){
+			appProcessGroup.addLayerFilename(fc, new String[] { destFilename });
+		}
 		String command = "v.in.ogr";
 		command += " min_area=-1";
 		command += " dsn=\"" + new File(intermediateFilename).getParent()
@@ -368,9 +410,19 @@ public class GrassProcess extends ExternalProcess {
 	}
 
 	private String exportRasterLayer(GridCoverage2D gc) {
+		if (appProcessGroup != null) {
+			String[] filenames = appProcessGroup.getLayerFilenames(gc);
+			if (filenames != null) {
+				exportedLayers.put(gc, filenames);
+				return null;
+			}
+		}
 		String intermediateFilename = saveRasterLayer(gc);
 		String destFilename = getTempFilename();
 		exportedLayers.put(gc, new String[] { destFilename });
+		if (appProcessGroup != null){
+			appProcessGroup.addLayerFilename(gc, new String[] { destFilename });
+		}
 		String command = "r.in.gdal";
 		command += " input=\"" + intermediateFilename + "\"";
 		command += " band=1";
@@ -394,6 +446,7 @@ public class GrassProcess extends ExternalProcess {
 		}
 		// we just delete the mapset
 		deleteDir(new File(gisdbase));
+		isAppSpecificCleared = true;
 
 	}
 

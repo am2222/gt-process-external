@@ -37,7 +37,7 @@ public class SagaProcess extends ExternalProcess {
 	private String modulelib;
 	private String[] extentParamNames;
 	private HashMap<String, String[]> fixedTableCols;
-	HashMap<String, String> outputFilenames = new HashMap<String, String>();
+	private HashMap<String, String> outputFilenames = new HashMap<String, String>();	
 
 	public SagaProcess(String desc) {
 		outputFilenames = new HashMap<String, String>();
@@ -282,13 +282,11 @@ public class SagaProcess extends ExternalProcess {
 			Parameter param = outputs.get(key);			
 				String filename = null;
 				if (param.getType().equals(GridCoverage2D.class)) {
-				filename = getTempLayerFilename(key, "tif");
-				command += " -" + param.getName() + " \"" + filename
-						+ ".sgrd\"";
+					filename = getTempLayerFilename(key, "tif");
+					command += " -" + param.getName() + " \"" + filename + ".sgrd\"";
 				} else {
-						// {
-				filename = getTempLayerFilename(key, "shp");
-				command += " -" + param.getName() + " \"" + filename + "\"";
+					filename = getTempLayerFilename(key, "shp");
+					command += " -" + param.getName() + " \"" + filename + "\"";
 				}
 				outputFilenames.put(key, filename);							
 		}

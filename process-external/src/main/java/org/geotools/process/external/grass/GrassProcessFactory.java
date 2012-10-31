@@ -11,7 +11,6 @@ import java.util.Set;
 
 import org.geotools.data.Parameter;
 import org.geotools.feature.NameImpl;
-import org.geotools.process.Process;
 import org.geotools.process.ProcessFactory;
 import org.geotools.util.SimpleInternationalString;
 import org.opengis.feature.type.Name;
@@ -62,7 +61,7 @@ public class GrassProcessFactory implements ProcessFactory {
 	}
 
 	@Override
-	public Process create(Name name) {
+	public GrassProcess create(Name name) {
 		GrassProcess process = getProcess(name);
 		return process;
 	}
